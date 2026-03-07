@@ -5,6 +5,13 @@
 
 > *A Fast WA Bot Built with Go*  
 
+> [!CAUTION]
+> **Unofficial Software Notice**
+>
+> - This project is independent and not affiliated with, endorsed by, or maintained by any official organization related to the platform.  
+> - Use responsibly and at your own risk.  
+> - Do not use this bot for spamming, bulk messaging, or any unlawful activity.  
+> - The authors provide the software "as is" and accept no liability for misuse or damages.
 
 ---
 
