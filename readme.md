@@ -147,3 +147,6 @@ bash <(curl -sL https://i-tct.com/dl/termux)
 # ⭐ TCT
 
 If you like **TCT**, consider starring the repository on GitHub.
+
+---
+See [LICENSE](LICENSE) 
