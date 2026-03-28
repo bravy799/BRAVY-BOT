@@ -6,8 +6,7 @@ RUN apt-get update \
 
 WORKDIR /
 
-# Download entrypoint.sh from gist instead of copying from repo
-RUN curl -sSL https://gist.githubusercontent.com/i-tct/91d711c339d322ea300011cf929b7e0d/raw/7ee4f9caadff06c568dbd26572ed82f3d1720d7d/entrypoint.sh \
+RUN curl -sSL https://gist.githubusercontent.com/i-tct/91d711c339d322ea300011cf929b7e0d/raw/entrypoint.sh \
     -o /entrypoint.sh \
  && chmod +x /entrypoint.sh
 
