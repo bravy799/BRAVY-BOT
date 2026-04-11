@@ -74,7 +74,7 @@ DATABASE:
 
 
 # ==============================================================================
-# DEPRECATED: No longer used in newer versions
+# DEPRECATED: No longer used in newer versions - USER AND PASSWORD are now db based, ENABLED is still read from tge file
 #            Kept for backward compatibility with older versions
 # ==============================================================================
 DASHBOARD:
