@@ -19,24 +19,18 @@ const DOWNLOAD_URL =
 
 function downloadBinary(url = DOWNLOAD_URL) {
   return new Promise((resolve, reject) => {
-
-    // If file exists and isn't empty, skip download
     if (fs.existsSync(programPath)) {
       const stats = fs.statSync(programPath);
-
       if (stats.size > 100000) {
         return resolve();
       }
-
       console.log("Binary is corrupted. Re-downloading...");
       fs.unlinkSync(programPath);
     }
 
-    console.log("Downloading binary...");
+    console.log(`Downloading fresh binary from: ${url}`);
 
     https.get(url, (res) => {
-
-      // Follow GitHub redirects
       if (res.statusCode === 301 || res.statusCode === 302) {
         return downloadBinary(res.headers.location)
           .then(resolve)
@@ -48,12 +42,10 @@ function downloadBinary(url = DOWNLOAD_URL) {
       }
 
       const file = fs.createWriteStream(programPath);
-
       res.pipe(file);
 
       file.on("finish", () => {
         file.close(() => {
-
           try {
             if (process.platform !== "win32") {
               fs.chmodSync(programPath, 0o755);
@@ -68,26 +60,76 @@ function downloadBinary(url = DOWNLOAD_URL) {
       file.on("error", (err) => {
         fs.unlink(programPath, () => reject(err));
       });
-
     }).on("error", reject);
-
   });
+}
+
+function generateConfig() {
+  const candidates = ["TCTfile", "tctfile", "tctfile.yml", "config.yml"];
+  let configFile = "tctfile"; 
+  let content = "";
+
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      configFile = c;
+      content = fs.readFileSync(c, "utf8");
+      console.log(`Detected existing config file: ${configFile}`);
+      break;
+    }
+  }
+
+  let lines = content ? content.split("\n") : [];
+
+  const forceOverrideEnvVars = (key, value) => {
+    if (value === undefined || value === null || value === "") return;
+
+    const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const newLine = `${key}: "${escaped}"`;
+    const regex = new RegExp(`^${key}\\s*:`, "i");
+    let found = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (regex.test(lines[i])) {
+        lines[i] = newLine; 
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      lines.push(newLine); 
+    }
+  };
+
+  forceOverrideEnvVars("SESSION_ID", process.env.SESSION_ID);
+  forceOverrideEnvVars("PREFIX", process.env.PREFIX);
+  forceOverrideEnvVars("TIMEZONE", process.env.TIMEZONE);
+  forceOverrideEnvVars("OPENWEATHER_API_KEY", process.env.OPENWEATHER_API_KEY);
+  
+  const dynamicPort = process.env.PORT || process.env.server_port || process.env.SERVER_PORT;
+  if (dynamicPort) {
+    forceOverrideEnvVars("SERVER_PORT", dynamicPort);
+  }
+
+  fs.writeFileSync(configFile, lines.join("\n"));
 }
 
 let child = null;
 
 function start() {
-
   try {
     if (process.platform !== "win32") {
       fs.chmodSync(programPath, 0o755);
     }
   } catch {}
 
+  generateConfig();
+
   console.log("Starting TCT...");
 
   child = spawn(programPath, [], {
-    stdio: "inherit"
+    stdio: "inherit",
+    env: process.env 
   });
 
   child.on("close", (code) => {
@@ -107,7 +149,6 @@ function restart() {
 }
 
 async function main() {
-
   try {
     await downloadBinary();
     start();
@@ -115,17 +156,13 @@ async function main() {
     console.error("Startup failed:", err);
     process.exit(1);
   }
-
 }
 
 function shutdown() {
-
   console.log("\nShutting down...");
-
   if (child) {
     child.kill("SIGTERM");
   }
-
   process.exit(0);
 }
 
