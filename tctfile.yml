@@ -163,3 +163,29 @@ LOG_TO_FILE: false
 # Make sure the directory exists (e.g., "data/")
 # and that the application has write permissions
 LOG_FILE_PATH: "data/app.log"
+
+
+# Logging level controls the minimum severity of messages shown.
+# Possible values: "debug", "info", "warn", "error"
+
+# "debug" -> Development mode (lowest threshold).
+# Shows Debug, Info, Warn, and Error messages.
+# Use this when you want full visibility into everything.
+#LOG_LEVEL: "debug"
+
+# "info" -> Default mode.
+# Shows Info, Warn, and Error messages.
+# Hides debug spam, but still shows errors and important status updates.
+# Example: If an error occurs, it will still be shown even if set to "info".
+# This is the recommended setting for normal bot operation.
+LOG_LEVEL: "info"
+
+# "warn" -> Warning mode.
+# Shows only Warn and Error messages.
+# Hides general status updates, only surfaces potential issues.
+#LOG_LEVEL: "warn"
+
+# "error" -> Minimal mode.
+# Shows only Error messages.
+# Absolute minimum logging, only prints when something actually breaks.
+#LOG_LEVEL: "error"
