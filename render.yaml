@@ -1,7 +1,6 @@
 version: "1"
 services:
   - type: web
-    name: TCTECH
     runtime: docker
     plan: free
     region: virginia
