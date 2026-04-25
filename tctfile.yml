@@ -8,7 +8,7 @@
 # Basic identification and operation parameters for the bot.
 # ------------------------------------------------------------------------------
 # Unique identifier for this specific bot session/instance.
-SESSION_ID: "tct_test1"
+SESSION_ID: "tct_tet1"
 
 # Timezone used for logging, scheduled tasks, and time-based commands.
 # Use standard tz database names (e.g., "Africa/Nairobi", "America/New_York").
