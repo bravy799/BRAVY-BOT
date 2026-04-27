@@ -16,3 +16,5 @@ services:
         sync: false
       - key: PREFIX
         sync: false
+      - key: POSTGRES_URL
+        sync: false
