@@ -14,13 +14,43 @@ const platformMap = {
 const binaryName = platformMap[process.platform] || "tct-linux";
 const programPath = path.join(__dirname, binaryName);
 
-const DOWNLOAD_URL =
-  `https://github.com/i-tct/tct/releases/latest/download/${binaryName}`;
+const DOWNLOAD_URL = `https://github.com/i-tct/tct/releases/latest/download/${binaryName}`;
+const CONFIG_TEMPLATE_URL = "https://gist.githubusercontent.com/i-tct/1433de6fbe3a14f2178e5429b46c31c0/raw";
 
-function downloadBinary(url = DOWNLOAD_URL) {
+function downloadFile(url, destPath) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if ([301, 302, 307, 308].includes(res.statusCode)) {
+        return downloadFile(res.headers.location, destPath)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Download failed: HTTP ${res.statusCode}`));
+      }
+
+      const file = fs.createWriteStream(destPath);
+      res.pipe(file);
+
+      file.on("finish", () => {
+        file.close(() => {
+          resolve();
+        });
+      });
+
+      file.on("error", (err) => {
+        fs.unlink(destPath, () => reject(err));
+      });
+    }).on("error", reject);
+  });
+}
+
+function downloadBinary() {
   return new Promise((resolve, reject) => {
     if (fs.existsSync(programPath)) {
       const stats = fs.statSync(programPath);
+      // Basic integrity check
       if (stats.size > 100000) {
         return resolve();
       }
@@ -28,53 +58,45 @@ function downloadBinary(url = DOWNLOAD_URL) {
       fs.unlinkSync(programPath);
     }
 
-    console.log(`Downloading fresh binary from: ${url}`);
-
-    https.get(url, (res) => {
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        return downloadBinary(res.headers.location)
-          .then(resolve)
-          .catch(reject);
-      }
-
-      if (res.statusCode !== 200) {
-        return reject(new Error(`Download failed: ${res.statusCode}`));
-      }
-
-      const file = fs.createWriteStream(programPath);
-      res.pipe(file);
-
-      file.on("finish", () => {
-        file.close(() => {
-          try {
-            if (process.platform !== "win32") {
-              fs.chmodSync(programPath, 0o755);
-            }
-          } catch {}
-
-          console.log("Binary downloaded successfully.");
-          resolve();
-        });
-      });
-
-      file.on("error", (err) => {
-        fs.unlink(programPath, () => reject(err));
-      });
-    }).on("error", reject);
+    console.log(`Downloading fresh binary from: ${DOWNLOAD_URL}`);
+    downloadFile(DOWNLOAD_URL, programPath)
+      .then(() => {
+        try {
+          if (process.platform !== "win32") {
+            fs.chmodSync(programPath, 0o755);
+          }
+        } catch {}
+        console.log("Binary downloaded successfully.");
+        resolve();
+      })
+      .catch(reject);
   });
 }
 
-function generateConfig() {
+async function generateConfig() {
   const candidates = ["TCTfile", "tctfile", "tctfile.yml", "config.yml"];
   let configFile = "tctfile"; 
   let content = "";
+  let found = false;
 
   for (const c of candidates) {
     if (fs.existsSync(c)) {
       configFile = c;
       content = fs.readFileSync(c, "utf8");
       console.log(`Detected existing config file: ${configFile}`);
+      found = true;
       break;
+    }
+  }
+
+  if (!found) {
+    console.log("⚠️ No config file found. Downloading default template...");
+    try {
+      await downloadFile(CONFIG_TEMPLATE_URL, configFile);
+      content = fs.readFileSync(configFile, "utf8");
+      console.log("✅ Default config template downloaded.");
+    } catch (err) {
+      console.error("❌ Failed to download config template:", err);
     }
   }
 
@@ -86,26 +108,31 @@ function generateConfig() {
     const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
     const newLine = `${key}: "${escaped}"`;
     const regex = new RegExp(`^${key}\\s*:`, "i");
-    let found = false;
+    let keyFound = false;
 
     for (let i = 0; i < lines.length; i++) {
       if (regex.test(lines[i])) {
         lines[i] = newLine; 
-        found = true;
+        keyFound = true;
         break;
       }
     }
 
-    if (!found) {
+    if (!keyFound) {
       lines.push(newLine); 
     }
   };
 
+  // Standard Variables
   forceOverrideEnvVars("SESSION_ID", process.env.SESSION_ID);
   forceOverrideEnvVars("PREFIX", process.env.PREFIX);
   forceOverrideEnvVars("TIMEZONE", process.env.TIMEZONE);
   forceOverrideEnvVars("OPENWEATHER_API_KEY", process.env.OPENWEATHER_API_KEY);
   
+  // Postgres Cloud Sync Variables
+  forceOverrideEnvVars("POSTGRES_URL", process.env.POSTGRES_URL);
+  forceOverrideEnvVars("POSTGRES_SYNC_INTERVAL", process.env.POSTGRES_SYNC_INTERVAL);
+
   const dynamicPort = process.env.PORT || process.env.server_port || process.env.SERVER_PORT;
   if (dynamicPort) {
     forceOverrideEnvVars("SERVER_PORT", dynamicPort);
@@ -116,14 +143,14 @@ function generateConfig() {
 
 let child = null;
 
-function start() {
+async function start() {
   try {
     if (process.platform !== "win32") {
       fs.chmodSync(programPath, 0o755);
     }
   } catch {}
 
-  generateConfig();
+  await generateConfig();
 
   console.log("Starting TCT...");
 
