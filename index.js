@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const https = require("https");
 
+// --- Bravy Tech Branding ---
+const BOT_NAME = "Bravy Tech Bot";
 const RESTART_DELAY = 2000;
 
 const platformMap = {
@@ -50,15 +52,14 @@ function downloadBinary() {
   return new Promise((resolve, reject) => {
     if (fs.existsSync(programPath)) {
       const stats = fs.statSync(programPath);
-      // Basic integrity check
       if (stats.size > 100000) {
         return resolve();
       }
-      console.log("Binary is corrupted. Re-downloading...");
+      console.log(`[${BOT_NAME}] Core binary corrupted. Repairing...`);
       fs.unlinkSync(programPath);
     }
 
-    console.log(`Downloading fresh binary from: ${DOWNLOAD_URL}`);
+    console.log(`[${BOT_NAME}] Initializing engine... downloading from source.`);
     downloadFile(DOWNLOAD_URL, programPath)
       .then(() => {
         try {
@@ -66,7 +67,7 @@ function downloadBinary() {
             fs.chmodSync(programPath, 0o755);
           }
         } catch {}
-        console.log("Binary downloaded successfully.");
+        console.log(`[${BOT_NAME}] Engine downloaded successfully.`);
         resolve();
       })
       .catch(reject);
@@ -83,20 +84,20 @@ async function generateConfig() {
     if (fs.existsSync(c)) {
       configFile = c;
       content = fs.readFileSync(c, "utf8");
-      console.log(`Detected existing config file: ${configFile}`);
+      console.log(`[${BOT_NAME}] Configuration detected: ${configFile}`);
       found = true;
       break;
     }
   }
 
   if (!found) {
-    console.log("⚠️ No config file found. Downloading default template...");
+    console.log(`[${BOT_NAME}] ⚠️ First-time setup: Fetching default configuration...`);
     try {
       await downloadFile(CONFIG_TEMPLATE_URL, configFile);
       content = fs.readFileSync(configFile, "utf8");
-      console.log("✅ Default config template downloaded.");
+      console.log(`[${BOT_NAME}] ✅ Configuration template ready.`);
     } catch (err) {
-      console.error("❌ Failed to download config template:", err);
+      console.error(`[${BOT_NAME}] ❌ Configuration failed:`, err);
     }
   }
 
@@ -123,13 +124,10 @@ async function generateConfig() {
     }
   };
 
-  // Standard Variables
   forceOverrideEnvVars("SESSION_ID", process.env.SESSION_ID);
   forceOverrideEnvVars("PREFIX", process.env.PREFIX);
   forceOverrideEnvVars("TIMEZONE", process.env.TIMEZONE);
   forceOverrideEnvVars("OPENWEATHER_API_KEY", process.env.OPENWEATHER_API_KEY);
-  
-  // Postgres Cloud Sync Variables
   forceOverrideEnvVars("POSTGRES_URL", process.env.POSTGRES_URL);
   forceOverrideEnvVars("POSTGRES_SYNC_INTERVAL", process.env.POSTGRES_SYNC_INTERVAL);
 
@@ -152,7 +150,7 @@ async function start() {
 
   await generateConfig();
 
-  console.log("Starting TCT...");
+  console.log(`[${BOT_NAME}] System Online. Launching main process...`);
 
   child = spawn(programPath, [], {
     stdio: "inherit",
@@ -160,18 +158,18 @@ async function start() {
   });
 
   child.on("close", (code) => {
-    console.log(`Process exited with code ${code}`);
+    console.log(`[${BOT_NAME}] Process exited with code ${code}`);
     restart();
   });
 
   child.on("error", (err) => {
-    console.error("Failed to start:", err);
+    console.error(`[${BOT_NAME}] Failed to start:`, err);
     restart();
   });
 }
 
 function restart() {
-  console.log(`Restarting in ${RESTART_DELAY / 1000}s...\n`);
+  console.log(`[${BOT_NAME}] Attempting automatic restart in ${RESTART_DELAY / 1000}s...\n`);
   setTimeout(start, RESTART_DELAY);
 }
 
@@ -180,13 +178,13 @@ async function main() {
     await downloadBinary();
     start();
   } catch (err) {
-    console.error("Startup failed:", err);
+    console.error(`[${BOT_NAME}] Startup failed:`, err);
     process.exit(1);
   }
 }
 
 function shutdown() {
-  console.log("\nShutting down...");
+  console.log(`\n[${BOT_NAME}] Powering down...`);
   if (child) {
     child.kill("SIGTERM");
   }
