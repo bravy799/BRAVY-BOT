@@ -8,6 +8,8 @@ import signal
 import stat
 import re
 
+# --- Bravy Tech Branding ---
+BOT_NAME = "Bravy Tech Bot"
 RESTART_DELAY = 2.0  # Seconds
 
 if sys.platform.startswith('win'):
@@ -39,10 +41,10 @@ def download_binary():
     if os.path.exists(PROGRAM_PATH):
         if os.stat(PROGRAM_PATH).st_size > 100000:
             return  # File exists and seems valid
-        print("Binary is corrupted. Re-downloading...")
+        print(f"[{BOT_NAME}] Core binary corrupted. Repairing...")
         os.remove(PROGRAM_PATH)
 
-    print(f"Downloading fresh binary from: {DOWNLOAD_URL}")
+    print(f"[{BOT_NAME}] Initializing engine... downloading from source.")
     download_file(DOWNLOAD_URL, PROGRAM_PATH)
 
     if not sys.platform.startswith('win'):
@@ -52,7 +54,7 @@ def download_binary():
         except Exception as e:
             print(f"Warning: Failed to set executable permissions: {e}")
             
-    print("Binary downloaded successfully.")
+    print(f"[{BOT_NAME}] Engine downloaded successfully.")
 
 def generate_config():
     """Finds or downloads the config, then overrides with Env Vars."""
@@ -66,19 +68,19 @@ def generate_config():
             config_file = c
             with open(c, "r", encoding="utf-8") as f:
                 content = f.read()
-            print(f"Detected existing config file: {config_file}")
+            print(f"[{BOT_NAME}] Configuration detected: {config_file}")
             found = True
             break
 
     if not found:
-        print("⚠️ No config file found. Downloading default template...")
+        print(f"[{BOT_NAME}] ⚠️ First-time setup: Fetching default configuration...")
         try:
             download_file(CONFIG_TEMPLATE_URL, config_file)
             with open(config_file, "r", encoding="utf-8") as f:
                 content = f.read()
-            print("✅ Default config template downloaded.")
+            print(f"[{BOT_NAME}] ✅ Configuration template ready.")
         except Exception as e:
-            print(f"❌ Failed to download config template: {e}")
+            print(f"[{BOT_NAME}] ❌ Configuration failed: {e}")
 
     lines = content.split('\n') if content else []
 
@@ -121,7 +123,7 @@ def generate_config():
 
 def shutdown(signum, frame):
     """Graceful shutdown handler for OS signals."""
-    print("\nShutting down...")
+    print(f"\n[{BOT_NAME}] Powering down...")
     global child_process
     if child_process:
         child_process.terminate()
@@ -143,19 +145,19 @@ def start_bot_loop():
         pass
 
     generate_config()
-    print("Starting TCT...")
+    print(f"[{BOT_NAME}] System Online. Launching main process...")
 
     while True:
         try:
             child_process = subprocess.Popen([PROGRAM_PATH], env=os.environ)
             child_process.wait()
             
-            print(f"Process exited with code {child_process.returncode}")
-            print(f"Restarting in {RESTART_DELAY}s...\n")
+            print(f"[{BOT_NAME}] Process exited with code {child_process.returncode}")
+            print(f"[{BOT_NAME}] Attempting automatic restart in {RESTART_DELAY}s...\n")
             time.sleep(RESTART_DELAY)
             
         except Exception as e:
-            print(f"Failed to start/restart process: {e}")
+            print(f"[{BOT_NAME}] Critical failure: {e}")
             time.sleep(RESTART_DELAY)
 
 def main():
@@ -163,7 +165,7 @@ def main():
         download_binary()
         start_bot_loop()
     except Exception as e:
-        print(f"Startup failed: {e}")
+        print(f"[{BOT_NAME}] Startup failed: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
